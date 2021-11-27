@@ -4,6 +4,7 @@ import sys
 import time
 import cv2 
 import numpy as np
+import traceback
 
 from pycoral.adapters.common import input_size
 from pycoral.adapters.detect import get_objects
@@ -57,14 +58,16 @@ def main():
         last_time = time.monotonic()
         while camera.isOpened():
             try:
-                ret, frame = camera.read() 
+                ret, frame = camera.read()
+                frame=cv2.rotate(frame,cv2.ROTATE_180)
                 if ret == False :
                     print('can NOT read from camera')
                     break
                 
                 start_time = time.monotonic()
                 input = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                run_inference(interpreter, np.array(input))
+                img=cv2.resize(input,inference_size)
+                run_inference(interpreter, img.flatten())
                 results = get_objects(interpreter, args.threshold)[:args.top_k]
                 stop_time = time.monotonic()
                 inference_ms = (stop_time - start_time)*1000.0
@@ -73,15 +76,16 @@ def main():
 
                 for result in results:
                     bbox = result.bbox.scale(scale_x, scale_y)
-                    coord_top_left = (bbox.xmin, bbox.ymin)
-                    coord_bottom_right = (bbox.xmin+bbox.width, bbox.ymin+bbox.height)
-                    cv2.rectangle(input, coord_top_left, coord_bottom_right, boxColor, boxLineWidth)
+                    coord_top_left = (int(bbox.xmin), int(bbox.ymin))
+                    coord_bottom_right = (int(bbox.xmin+bbox.width), int(bbox.ymin+bbox.height))
+                    cv2.rectangle(frame, coord_top_left, coord_bottom_right, boxColor, boxLineWidth)
                     annotate_text = "%s, %.0f%%" % (labels.get(result.id, result.id), result.score * 100)
                     coord_top_left = (coord_top_left[0],coord_top_left[1]+15)
-                    cv2.putText(input, annotate_text, coord_top_left, font, fontScale, boxColor, lineType )	
+                    cv2.putText(frame, annotate_text, coord_top_left, font, fontScale, boxColor, lineType )	
             
                 annotate_text = 'Inference: {:5.2f}ms FPS: {:3.1f}'.format(inference_ms, fps_ms)
-                cv2.imshow('Detected Objects', input)
+                cv2.putText(frame, annotate_text, bottomLeftCornerOfText, font, fontScale, boxColor, lineType )	
+                cv2.imshow('Detected Objects', frame)
                 if cv2.waitKey(1) & 0xFF == ord('q'):
                     break
 
