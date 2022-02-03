@@ -1,0 +1,9 @@
+0 ban
+1 cycle
+2 first
+3 P
+4 second
+5 straight
+6 thirty
+7 train
+8 Null
